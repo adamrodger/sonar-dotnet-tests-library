@@ -41,45 +41,86 @@ public class UnitTestResultsAggregatorTest {
   public void hasUnitTestResultsProperty() {
     Settings settings = mock(Settings.class);
 
-    UnitTestConfiguration unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile");
+    UnitTestConfiguration unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile", "nunitTestResultsFile");
 
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(false);
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(false);
     assertThat(new UnitTestResultsAggregator(unitTestConf, settings).hasUnitTestResultsProperty()).isFalse();
 
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(true);
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(false);
     assertThat(new UnitTestResultsAggregator(unitTestConf, settings).hasUnitTestResultsProperty()).isTrue();
 
-    unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile2");
+    when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(false);
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(true);
+    assertThat(new UnitTestResultsAggregator(unitTestConf, settings).hasUnitTestResultsProperty()).isTrue();
+
+    unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile2", "nunit2");
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(true);
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(true);
     assertThat(new UnitTestResultsAggregator(unitTestConf, settings).hasUnitTestResultsProperty()).isFalse();
   }
 
   @Test
   public void aggregate() {
-    UnitTestConfiguration unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile");
+    UnitTestConfiguration unitTestConf = new UnitTestConfiguration("visualStudioTestResultsFile", "nunitTestResultsFile");
     Settings settings = mock(Settings.class);
 
+    // Visual Studio test results only
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(true);
     when(settings.getString("visualStudioTestResultsFile")).thenReturn("foo.trx");
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(false);
     VisualStudioTestResultsFileParser visualStudioTestResultsFileParser = mock(VisualStudioTestResultsFileParser.class);
+    NUnitTestResultsFileParser nunitTestResultsFileParser = mock(NUnitTestResultsFileParser.class);
     UnitTestResults results = mock(UnitTestResults.class);
-    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser).aggregate(results);
+    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser, nunitTestResultsFileParser).aggregate(results);
     verify(visualStudioTestResultsFileParser).parse(new File("foo.trx"), results);
+    verify(nunitTestResultsFileParser, Mockito.never()).parse(Mockito.any(File.class), Mockito.any(UnitTestResults.class));
 
+    // NUnit test results only
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(false);
-    when(settings.getString("visualStudioTestResultsFile")).thenReturn("foo.trx");
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(true);
+    when(settings.getString("nunitTestResultsFile")).thenReturn("foo.xml");
     visualStudioTestResultsFileParser = mock(VisualStudioTestResultsFileParser.class);
+    nunitTestResultsFileParser = mock(NUnitTestResultsFileParser.class);
     results = mock(UnitTestResults.class);
-    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser).aggregate(results);
+    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser, nunitTestResultsFileParser).aggregate(results);
     verify(visualStudioTestResultsFileParser, Mockito.never()).parse(Mockito.any(File.class), Mockito.any(UnitTestResults.class));
+    verify(nunitTestResultsFileParser).parse(new File("foo.xml"), results);
 
+    // Both Visual Studio and NUnit configured
+    when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(true);
+    when(settings.getString("visualStudioTestResultsFile")).thenReturn("foo.trx");
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(true);
+    when(settings.getString("nunitTestResultsFile")).thenReturn("foo.xml");
+    visualStudioTestResultsFileParser = mock(VisualStudioTestResultsFileParser.class);
+    nunitTestResultsFileParser = mock(NUnitTestResultsFileParser.class);
+    results = mock(UnitTestResults.class);
+    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser, nunitTestResultsFileParser).aggregate(results);
+    verify(visualStudioTestResultsFileParser).parse(new File("foo.trx"), results);
+    verify(nunitTestResultsFileParser).parse(new File("foo.xml"), results);
+
+    // Visual Studio and NUnit not configured
+    when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(false);
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(false);
+    visualStudioTestResultsFileParser = mock(VisualStudioTestResultsFileParser.class);
+    nunitTestResultsFileParser = mock(NUnitTestResultsFileParser.class);
+    results = mock(UnitTestResults.class);
+    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser, nunitTestResultsFileParser).aggregate(results);
+    verify(visualStudioTestResultsFileParser, Mockito.never()).parse(Mockito.any(File.class), Mockito.any(UnitTestResults.class));
+    verify(nunitTestResultsFileParser, Mockito.never()).parse(Mockito.any(File.class), Mockito.any(UnitTestResults.class));
+
+    // Multiple files configured
     when(settings.hasKey("visualStudioTestResultsFile")).thenReturn(true);
     when(settings.getString("visualStudioTestResultsFile")).thenReturn(",foo.trx  ,bar.trx");
+    when(settings.hasKey("nunitTestResultsFile")).thenReturn(false);
     visualStudioTestResultsFileParser = mock(VisualStudioTestResultsFileParser.class);
+    nunitTestResultsFileParser = mock(NUnitTestResultsFileParser.class);
     results = mock(UnitTestResults.class);
-    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser).aggregate(results);
+    new UnitTestResultsAggregator(unitTestConf, settings, visualStudioTestResultsFileParser, nunitTestResultsFileParser).aggregate(results);
     verify(visualStudioTestResultsFileParser).parse(new File("foo.trx"), results);
     verify(visualStudioTestResultsFileParser).parse(new File("bar.trx"), results);
+    verify(nunitTestResultsFileParser, Mockito.never()).parse(Mockito.any(File.class), Mockito.any(UnitTestResults.class));
   }
 
 }

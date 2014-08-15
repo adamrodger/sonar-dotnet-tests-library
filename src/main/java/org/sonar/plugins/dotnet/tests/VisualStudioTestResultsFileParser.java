@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
-public class VisualStudioTestResultsFileParser {
+public class VisualStudioTestResultsFileParser implements UnitTestParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(VisualStudioTestResultsFileParser.class);
 

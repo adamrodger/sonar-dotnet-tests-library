@@ -29,7 +29,7 @@ import java.io.File;
 /**
  * NUnit Test Results File Parser
  */
-public class NUnitTestResultsFileParser {
+public class NUnitTestResultsFileParser implements UnitTestParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(NUnitTestResultsFileParser.class);
 
